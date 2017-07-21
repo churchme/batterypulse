@@ -1,0 +1,102 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".BatteryActivity">
+
+    <ToggleButton
+        android:id="@+id/toggleService"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="toggleService"
+        android:textOff="Service Disabled"
+        android:textOn="Service Enabled" />
+
+    <TextView
+        android:id="@+id/labelDelay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Delay after screen off" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="1">
+        <SeekBar
+            android:id="@+id/seekbarDelay"
+            style="@style/Widget.AppCompat.SeekBar.Discrete"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="59"
+            android:progress="3"
+            android:layout_weight="0.975" />
+        <TextView
+            android:id="@+id/textDelay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="10"
+            android:layout_weight="0.025"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/labelSensitivity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lift Sensitivity" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="1">
+        <SeekBar
+            android:id="@+id/seekbarSensitivity"
+            style="@style/Widget.AppCompat.SeekBar.Discrete"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="19"
+            android:progress="3"
+            android:layout_weight="0.975"/>
+        <TextView
+            android:id="@+id/textSensitivity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="11"
+            android:layout_weight="0.025"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/labelInterval"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Check Battery Interval" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <SeekBar
+            android:id="@+id/seekbarInterval"
+            style="@style/Widget.AppCompat.SeekBar.Discrete"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="9"
+            android:progress="3"
+            android:layout_weight="0.975"/>
+        <TextView
+            android:id="@+id/textInterval"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="4"
+            android:layout_weight="0.025"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textAccelerometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0"
+        android:textSize="30sp" />
+
+</LinearLayout>
