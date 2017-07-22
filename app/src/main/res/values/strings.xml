@@ -5,6 +5,12 @@
     <string name="title_activity_battery_settings">Settings</string>
 
     <!-- Strings related to Settings -->
+    <string name="screen_delay">Delay after screen off</string>
+    <string name="lift_sensitivity">Lift sensitivity</string>
+    <string name="batt_check_interval">Battery check interval</string>
+    <string name="buzz_pattern">Vibration pattern</string>
+    <string name="pattern1">Proportional</string>
+    <string name="pattern2">Incremental</string>
 
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>

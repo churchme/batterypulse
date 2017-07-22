@@ -7,7 +7,7 @@
 
     <ToggleButton
         android:id="@+id/toggleService"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:onClick="toggleService"
         android:textOff="Service Disabled"
@@ -17,7 +17,7 @@
         android:id="@+id/labelDelay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Delay after screen off" />
+        android:text="@string/screen_delay" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -36,7 +36,7 @@
             android:id="@+id/textDelay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="10"
+            android:text=""
             android:layout_weight="0.025"/>
     </LinearLayout>
 
@@ -44,7 +44,7 @@
         android:id="@+id/labelSensitivity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Lift Sensitivity" />
+        android:text="@string/lift_sensitivity" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -63,7 +63,7 @@
             android:id="@+id/textSensitivity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="11"
+            android:text=""
             android:layout_weight="0.025"/>
     </LinearLayout>
 
@@ -71,7 +71,7 @@
         android:id="@+id/labelInterval"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Check Battery Interval" />
+        android:text="@string/batt_check_interval" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -88,15 +88,42 @@
             android:id="@+id/textInterval"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="4"
+            android:text=""
             android:layout_weight="0.025"/>
     </LinearLayout>
 
     <TextView
-        android:id="@+id/textAccelerometer"
+        android:id="@+id/textPattern"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="0"
-        android:textSize="30sp" />
+        android:text="@string/buzz_pattern" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <RadioGroup
+            android:id="@+id/radioGroupStyle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioStyle1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/pattern1" />
+
+            <RadioButton
+                android:id="@+id/radioStyle2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/pattern2" />
+        </RadioGroup>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -16,6 +16,8 @@ import android.os.IBinder;
 import android.view.View;
 import android.app.Activity;
 import android.util.Log;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -34,6 +36,7 @@ public class BatteryActivity extends Activity {
     private SeekBar seekbar_delay;
     private SeekBar seekbar_sensitivity;
     private ToggleButton toggle_service;
+    private RadioGroup radio_style;
 
     BatteryReceiver mReceiver;
 
@@ -52,17 +55,23 @@ public class BatteryActivity extends Activity {
         BroadcastReceiver mReceiver = new ScreenReceiver();
         registerReceiver(mReceiver, filter);
 
-        TextView txt_sensor = (TextView) findViewById(R.id.textAccelerometer);
         txt_interval = (TextView)findViewById(R.id.textInterval);
         txt_delay = (TextView)findViewById(R.id.textDelay);
         txt_sensitivity = (TextView)findViewById(R.id.textSensitivity);
         seekbar_delay = (SeekBar) findViewById(R.id.seekbarDelay);
         seekbar_battery = (SeekBar) findViewById(R.id.seekbarInterval);
         seekbar_sensitivity = (SeekBar) findViewById(R.id.seekbarSensitivity);
-        seekbar_delay.setProgress(settings.getInt("screen_off_delay", 10));
-        seekbar_battery.setProgress(settings.getInt("battery_check_interval", 4));
-        seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity", 11));
         toggle_service = (ToggleButton) findViewById(R.id.toggleService);
+        radio_style = (RadioGroup) findViewById(R.id.radioGroupStyle);
+
+        seekbar_delay.setProgress((settings.getInt("screen_off_delay", 9)));
+        seekbar_battery.setProgress((settings.getInt("battery_check_interval", 3)));
+        seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity", 10));
+        txt_delay.setText(String.valueOf(settings.getInt("screen_off_delay", 10)));
+        txt_interval.setText(String.valueOf(settings.getInt("battery_check_interval", 4)));
+        txt_sensitivity.setText(String.valueOf(settings.getInt("accel_sensitivity", 11)));
+        toggle_service.setChecked(settings.getBoolean("is_enabled", false));
+        ((RadioButton)radio_style.getChildAt(settings.getInt("buzz_style", 0))).setChecked(true);
 
         seekbar_battery.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -109,6 +118,13 @@ public class BatteryActivity extends Activity {
             }
         });
 
+        radio_style.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                saveSettings();
+            }
+        });
+
 
         /* For getting the accel readings to the text view */
         //IntentFilter filter1 = new IntentFilter(BatteryReceiver.SENSOR_RESP);
@@ -129,18 +145,28 @@ public class BatteryActivity extends Activity {
     private void saveSettings() {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
-        editor.putInt("battery_check_interval", seekbar_battery.getProgress());
-        editor.putInt("screen_off_delay", seekbar_delay.getProgress());
-        editor.putInt("accel_sensitivity", seekbar_sensitivity.getProgress());
+
+        editor.putInt("screen_off_delay", Integer.parseInt(txt_delay.getText().toString()));
+        Log.d(msg, "" + Integer.parseInt(txt_delay.getText().toString()));
+        editor.putInt("accel_sensitivity", Integer.parseInt(txt_sensitivity.getText().toString()));
+        Log.d(msg, "" + Integer.parseInt(txt_sensitivity.getText().toString()));
+        editor.putInt("battery_check_interval", Integer.parseInt(txt_interval.getText().toString()));
+        Log.d(msg, "" + Integer.parseInt(txt_interval.getText().toString()));
         editor.putBoolean("is_enabled", toggle_service.isChecked());
+        Log.d(msg, "" + toggle_service.isChecked());
+        editor.putInt("buzz_style", radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
+        Log.d(msg, "" + radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
 
         // Commit the edits!
         editor.commit();
-        Log.d(msg, "Saving settings");
     }
 
     public void toggleService(View view) {
         saveSettings();
+    }
+
+    public void setToggleButton(boolean bool) {
+        toggle_service.setChecked(bool);
     }
 
     /** Defines callbacks for service binding, passed to bindService() */
@@ -155,6 +181,7 @@ public class BatteryActivity extends Activity {
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
+
         }
     };
 }

@@ -36,7 +36,8 @@
         <receiver
             android:name=".ScreenReceiver"
             android:enabled="true"
-            android:exported="true"></receiver>
+            android:exported="true">
+        </receiver>
     </application>
 
 </manifest>
