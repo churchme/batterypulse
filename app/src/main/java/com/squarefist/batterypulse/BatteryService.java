@@ -1,5 +1,7 @@
 package com.squarefist.batterypulse;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -17,9 +19,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.util.Log;
-import android.widget.Toast;
-
-import java.util.ArrayList;
 
 public class BatteryService extends Service implements SensorEventListener {
     public static String STATUS_OUT_MSG = "stat_msg";
@@ -41,7 +40,8 @@ public class BatteryService extends Service implements SensorEventListener {
     private int checkBatteryInterval;
     private int accelSensitvity;
     private int pattern;
-    private boolean onCooldown;
+    private int onTheMove;
+    private int maxMove;
 
     /**
      * Class used for the client Binder.  Because we know this service always
@@ -77,11 +77,16 @@ public class BatteryService extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Context context = getApplicationContext();
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
         checkBatteryInterval = (settings.getInt("battery_check_interval", 240000) * 60000);
         accelSensitvity = settings.getInt("accel_sensitivity", 11);
         pattern = settings.getInt("buzz_style", 0);
+
+        // Accelerometer checked very .2 seconds
+        maxMove = settings.getInt("screen_off_delay", 10) * 60 * 5;
+        onTheMove = maxMove;
 
         sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -93,7 +98,25 @@ public class BatteryService extends Service implements SensorEventListener {
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-        Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show();
+        Notification noti = new Notification.Builder(context)
+                .setContentTitle("New mail from your mom")
+                .setContentText("your mom")
+                .setSmallIcon(R.drawable.ic_info_black_24dp)
+                .build();
+
+        // Sets an ID for the notification
+        int mNotificationId = 001;
+        // Gets an instance of the NotificationManager service
+        //NotificationManager mNotifyMgr =
+        //        (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
+        // Grabs the notification and issues it.
+        //mNotifyMgr.notify(mNotificationId, noti);
+        Log.d(msg, "Built notification");
+
+        startForeground(mNotificationId,noti);
+
+        Log.d(msg, "Issued noticiation");
+
         return START_STICKY;
     }
 
@@ -103,13 +126,11 @@ public class BatteryService extends Service implements SensorEventListener {
         unregisterReceiver(batInfoReceiver);
         batteryHandler.removeCallbacks(checkBatteryStatusRunnable);
         super.onDestroy();
-        Toast.makeText(this, "Service Destroyed", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         float[] mGravity;
-        float mProximity;
         float mAccel = 0;
 
         try {
@@ -125,14 +146,21 @@ public class BatteryService extends Service implements SensorEventListener {
                 mAccelLast = mAccelCurrent;
                 mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
                 float delta = mAccelCurrent - mAccelLast;
-                mAccel = mAccel * 0.9f + delta;
+                mAccel = Math.abs(mAccel * 0.9f + delta);
 
-                intentMessage(BatteryReceiver.SENSOR_RESP, SENSOR_OUT_MSG, Float.toString(zAbs));
-                if (zAbs > accelSensitvity && !onCooldown) {
+                //intentMessage(BatteryReceiver.SENSOR_RESP, SENSOR_OUT_MSG, Float.toString(zAbs));
+                if (zAbs > accelSensitvity && onTheMove <= 10) {
                     Log.d(msg, "DOING THE THING!");
-                    onCooldown = true;
                     new VibeTask().execute(pattern);
                 }
+
+                if (mAccel > 0.5) {
+                    onTheMove = Math.min(++onTheMove, maxMove);
+                } else {
+                    onTheMove = Math.max(--onTheMove, 0);
+                }
+                Log.d(msg, "mAccel: " + mAccel);
+                Log.d(msg, "onTheMove: " + onTheMove);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -169,16 +197,9 @@ public class BatteryService extends Service implements SensorEventListener {
                 } while (n < currentBatteryLevel);
                 vibe.vibrate(pattern, -1);
             } else {
-                vibe.vibrate(10 * (long)currentBatteryLevel);
+                vibe.vibrate(10 * (long) currentBatteryLevel);
             }
-
-            try {
-                Log.d(msg, "Sleeping");
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                Log.d(msg, "Can't sleep after vibrate :(");
-                e.printStackTrace();
-            }
+            onTheMove = maxMove;
             return null;
         }
 
@@ -187,8 +208,7 @@ public class BatteryService extends Service implements SensorEventListener {
         }
 
         protected void onPostExecute(Void result) {
-            onCooldown = false;
-            Log.d(msg, "Done sleeping");
+            // Not needed
         }
     }
 

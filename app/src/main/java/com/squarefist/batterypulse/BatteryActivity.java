@@ -32,17 +32,16 @@ public class BatteryActivity extends Activity {
     private TextView txt_interval;
     private TextView txt_delay;
     private TextView txt_sensitivity;
-    private SeekBar seekbar_battery;
-    private SeekBar seekbar_delay;
-    private SeekBar seekbar_sensitivity;
     private ToggleButton toggle_service;
     private RadioGroup radio_style;
-
-    BatteryReceiver mReceiver;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        SeekBar seekbar_battery;
+        SeekBar seekbar_delay;
+        SeekBar seekbar_sensitivity;
+
         super.onCreate(savedInstanceState);
         Log.d(msg, "The onCreate() event");
         setContentView(R.layout.main);
@@ -64,6 +63,7 @@ public class BatteryActivity extends Activity {
         toggle_service = (ToggleButton) findViewById(R.id.toggleService);
         radio_style = (RadioGroup) findViewById(R.id.radioGroupStyle);
 
+        //TODO Add reset button
         seekbar_delay.setProgress((settings.getInt("screen_off_delay", 9)));
         seekbar_battery.setProgress((settings.getInt("battery_check_interval", 3)));
         seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity", 10));
@@ -147,18 +147,18 @@ public class BatteryActivity extends Activity {
         SharedPreferences.Editor editor = settings.edit();
 
         editor.putInt("screen_off_delay", Integer.parseInt(txt_delay.getText().toString()));
-        Log.d(msg, "" + Integer.parseInt(txt_delay.getText().toString()));
+        Log.d(msg, "Screen off Delay: " + Integer.parseInt(txt_delay.getText().toString()));
         editor.putInt("accel_sensitivity", Integer.parseInt(txt_sensitivity.getText().toString()));
-        Log.d(msg, "" + Integer.parseInt(txt_sensitivity.getText().toString()));
+        Log.d(msg, "Accel Sensitivity: " + Integer.parseInt(txt_sensitivity.getText().toString()));
         editor.putInt("battery_check_interval", Integer.parseInt(txt_interval.getText().toString()));
-        Log.d(msg, "" + Integer.parseInt(txt_interval.getText().toString()));
+        Log.d(msg, "Battery Check interval: " + Integer.parseInt(txt_interval.getText().toString()));
         editor.putBoolean("is_enabled", toggle_service.isChecked());
-        Log.d(msg, "" + toggle_service.isChecked());
+        Log.d(msg, "Is enabled: " + toggle_service.isChecked());
         editor.putInt("buzz_style", radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
-        Log.d(msg, "" + radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
+        Log.d(msg, "Style: " + radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
 
-        // Commit the edits!
-        editor.commit();
+        // Apply the edits!
+        editor.apply();
     }
 
     public void toggleService(View view) {
