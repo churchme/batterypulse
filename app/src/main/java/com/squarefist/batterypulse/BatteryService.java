@@ -2,6 +2,7 @@ package com.squarefist.batterypulse;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -17,7 +18,9 @@ import android.os.BatteryManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.Vibrator;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 public class BatteryService extends Service implements SensorEventListener {
@@ -42,6 +45,7 @@ public class BatteryService extends Service implements SensorEventListener {
     private int pattern;
     private int onTheMove;
     private int maxMove;
+    private PowerManager.WakeLock mWakeLock;
 
     /**
      * Class used for the client Binder.  Because we know this service always
@@ -80,6 +84,10 @@ public class BatteryService extends Service implements SensorEventListener {
         Context context = getApplicationContext();
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
+        mWakeLock.acquire();
+
         checkBatteryInterval = (settings.getInt("battery_check_interval", 240000) * 60000);
         accelSensitvity = settings.getInt("accel_sensitivity", 11);
         pattern = settings.getInt("buzz_style", 0);
@@ -98,24 +106,19 @@ public class BatteryService extends Service implements SensorEventListener {
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-        Notification noti = new Notification.Builder(context)
-                .setContentTitle("New mail from your mom")
-                .setContentText("your mom")
+
+        Intent notificationIntent = new Intent(this, BatteryActivity.class);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+                notificationIntent, 0);
+
+        Notification notification = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_info_black_24dp)
-                .build();
+                .setContentTitle("My Awesome App")
+                .setContentText("Doing some work...")
+                .setContentIntent(pendingIntent).build();
 
-        // Sets an ID for the notification
-        int mNotificationId = 001;
-        // Gets an instance of the NotificationManager service
-        //NotificationManager mNotifyMgr =
-        //        (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        // Grabs the notification and issues it.
-        //mNotifyMgr.notify(mNotificationId, noti);
-        Log.d(msg, "Built notification");
-
-        startForeground(mNotificationId,noti);
-
-        Log.d(msg, "Issued noticiation");
+        startForeground(1337, notification);
 
         return START_STICKY;
     }
@@ -125,6 +128,7 @@ public class BatteryService extends Service implements SensorEventListener {
         sensorMan.unregisterListener(this, accelerometer);
         unregisterReceiver(batInfoReceiver);
         batteryHandler.removeCallbacks(checkBatteryStatusRunnable);
+        mWakeLock.release();
         super.onDestroy();
     }
 
