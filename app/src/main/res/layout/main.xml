@@ -1,5 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/linearLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -9,9 +10,9 @@
         android:id="@+id/toggleService"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="toggleService"
-        android:textOff="Service Disabled"
-        android:textOn="Service Enabled" />
+        android:onClick="enableService"
+        android:textOff="@string/disabled"
+        android:textOn="@string/enabled" />
 
     <TextView
         android:id="@+id/labelDelay"
@@ -57,35 +58,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:max="19"
-            android:progress="3"
+            android:progress="9"
             android:layout_weight="0.975"/>
         <TextView
             android:id="@+id/textSensitivity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:layout_weight="0.025"/>
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/labelInterval"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/batt_check_interval" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <SeekBar
-            android:id="@+id/seekbarInterval"
-            style="@style/Widget.AppCompat.SeekBar.Discrete"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:max="9"
-            android:progress="3"
-            android:layout_weight="0.975"/>
-        <TextView
-            android:id="@+id/textInterval"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=""
@@ -104,7 +80,7 @@
 
         <RadioGroup
             android:id="@+id/radioGroupStyle"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="horizontal">
@@ -125,5 +101,19 @@
         </RadioGroup>
 
     </LinearLayout>
+
+    <Button
+        android:id="@+id/buttonResetSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="resetSettings"
+        android:text="@string/reset" />
+
+    <Button
+        android:id="@+id/buttonTestLift"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="testSettings"
+        android:text="@string/test" />
 
 </LinearLayout>

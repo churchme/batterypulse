@@ -5,17 +5,17 @@ package com.squarefist.batterypulse;
  */
 
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.View;
 import android.app.Activity;
 import android.util.Log;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -29,18 +29,23 @@ public class BatteryActivity extends Activity {
     String msg = "Android : ";
     public static final String PREFS_NAME = "BatteryPrefs";
 
-    private TextView txt_interval;
+    public static final int MAX_SENSE = 18;
+    public static final int MIN_SENSE = 10;
+
+    private LinearLayout layout;
     private TextView txt_delay;
     private TextView txt_sensitivity;
     private ToggleButton toggle_service;
+    private Button button_test;
     private RadioGroup radio_style;
+    private SeekBar seekbar_delay;
+    private SeekBar seekbar_sensitivity;
+    private TestReceiver bReceiver;
+    private GraphView graph_lift;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        SeekBar seekbar_battery;
-        SeekBar seekbar_delay;
-        SeekBar seekbar_sensitivity;
 
         super.onCreate(savedInstanceState);
         Log.d(msg, "The onCreate() event");
@@ -51,42 +56,29 @@ public class BatteryActivity extends Activity {
         // REGISTER RECEIVER THAT HANDLES SCREEN ON AND SCREEN OFF LOGIC
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-        BroadcastReceiver mReceiver = new ScreenReceiver();
-        registerReceiver(mReceiver, filter);
+        BroadcastReceiver sReceiver = new ScreenReceiver();
+        registerReceiver(sReceiver, filter);
 
-        txt_interval = (TextView)findViewById(R.id.textInterval);
-        txt_delay = (TextView)findViewById(R.id.textDelay);
-        txt_sensitivity = (TextView)findViewById(R.id.textSensitivity);
-        seekbar_delay = (SeekBar) findViewById(R.id.seekbarDelay);
-        seekbar_battery = (SeekBar) findViewById(R.id.seekbarInterval);
-        seekbar_sensitivity = (SeekBar) findViewById(R.id.seekbarSensitivity);
-        toggle_service = (ToggleButton) findViewById(R.id.toggleService);
-        radio_style = (RadioGroup) findViewById(R.id.radioGroupStyle);
+        layout = findViewById(R.id.linearLayout);
+        txt_delay = findViewById(R.id.textDelay);
+        txt_sensitivity = findViewById(R.id.textSensitivity);
+        seekbar_delay = findViewById(R.id.seekbarDelay);
+        seekbar_sensitivity = findViewById(R.id.seekbarSensitivity);
+        toggle_service = findViewById(R.id.toggleService);
+        radio_style = findViewById(R.id.radioGroupStyle);
+        button_test = findViewById(R.id.buttonTestLift);
 
-        //TODO Add reset button
         seekbar_delay.setProgress((settings.getInt("screen_off_delay", 9)));
-        seekbar_battery.setProgress((settings.getInt("battery_check_interval", 3)));
         seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity", 10));
-        txt_delay.setText(String.valueOf(settings.getInt("screen_off_delay", 10)));
-        txt_interval.setText(String.valueOf(settings.getInt("battery_check_interval", 4)));
-        txt_sensitivity.setText(String.valueOf(settings.getInt("accel_sensitivity", 11)));
+        txt_delay.setText(String.valueOf(seekbar_delay.getProgress()));
+        txt_sensitivity.setText(String.valueOf(seekbar_sensitivity.getProgress()));
         toggle_service.setChecked(settings.getBoolean("is_enabled", false));
         ((RadioButton)radio_style.getChildAt(settings.getInt("buzz_style", 0))).setChecked(true);
 
-        seekbar_battery.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                saveSettings();
-            }
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Do nothing
-            }
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                txt_interval.setText(String.valueOf(++progress));
-            }
-        });
+        graph_lift = new GraphView(this, seekbar_sensitivity.getProgress());
+        graph_lift.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        layout.addView(graph_lift);
 
         seekbar_delay.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -114,7 +106,8 @@ public class BatteryActivity extends Activity {
             }
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                txt_sensitivity.setText(String.valueOf(++progress));
+                txt_sensitivity.setText(String.valueOf(scaleSensitivity(++progress)));
+                graph_lift.updateSensPath(scaleSensitivity(progress));
             }
         });
 
@@ -124,16 +117,11 @@ public class BatteryActivity extends Activity {
                 saveSettings();
             }
         });
+    }
 
-
-        /* For getting the accel readings to the text view */
-        //IntentFilter filter1 = new IntentFilter(BatteryReceiver.SENSOR_RESP);
-        //filter1.addCategory(Intent.CATEGORY_DEFAULT);
-
-        //mReceiver = new BatteryReceiver();
-        //registerReceiver(mReceiver, filter1);
-        //mReceiver.setTextView(txt_sensor);
-
+    private int scaleSensitivity(int input) {
+        int scaled = (((MAX_SENSE - MIN_SENSE) * (input)) / (20)) + MIN_SENSE;
+        return scaled;
     }
 
     @Override
@@ -146,12 +134,10 @@ public class BatteryActivity extends Activity {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
 
-        editor.putInt("screen_off_delay", Integer.parseInt(txt_delay.getText().toString()));
-        Log.d(msg, "Screen off Delay: " + Integer.parseInt(txt_delay.getText().toString()));
-        editor.putInt("accel_sensitivity", Integer.parseInt(txt_sensitivity.getText().toString()));
-        Log.d(msg, "Accel Sensitivity: " + Integer.parseInt(txt_sensitivity.getText().toString()));
-        editor.putInt("battery_check_interval", Integer.parseInt(txt_interval.getText().toString()));
-        Log.d(msg, "Battery Check interval: " + Integer.parseInt(txt_interval.getText().toString()));
+        editor.putInt("screen_off_delay", seekbar_delay.getProgress());
+        Log.d(msg, "Screen off Delay: " + seekbar_delay.getProgress());
+        editor.putInt("accel_sensitivity", scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
+        Log.d(msg, "Accel Sensitivity: " + scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
         editor.putBoolean("is_enabled", toggle_service.isChecked());
         Log.d(msg, "Is enabled: " + toggle_service.isChecked());
         editor.putInt("buzz_style", radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
@@ -161,27 +147,30 @@ public class BatteryActivity extends Activity {
         editor.apply();
     }
 
-    public void toggleService(View view) {
+    public void enableService(View view) {
         saveSettings();
     }
 
-    public void setToggleButton(boolean bool) {
-        toggle_service.setChecked(bool);
+    public void resetSettings(View view) {
+        seekbar_delay.setProgress(9);
+        seekbar_sensitivity.setProgress(9);
+        toggle_service.setChecked(false);
+        ((RadioButton)radio_style.getChildAt(0)).setChecked(true);
+
+        saveSettings();
     }
 
-    /** Defines callbacks for service binding, passed to bindService() */
-    private ServiceConnection mConnection = new ServiceConnection() {
+    public void testSettings(View view) {
+        graph_lift.resetPaths();
 
-        @Override
-        public void onServiceConnected(ComponentName className, IBinder service) {
-            // We've bound to BatteryService, cast the IBinder and get BatteryService instance
-            BatteryService.LocalBinder binder = (BatteryService.LocalBinder) service;
-            mService = binder.getService();
-        }
+        /* For getting the accel readings to the text view */
+        IntentFilter filter1 = new IntentFilter(TestReceiver.SENSOR_RESP);
+        filter1.addCategory(Intent.CATEGORY_DEFAULT);
+        bReceiver = new TestReceiver();
+        registerReceiver(bReceiver, filter1);
 
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-
-        }
-    };
+        bReceiver.setGraphView(graph_lift);
+        startService(new Intent(context, BatteryService.class));
+    }
 }
+
