@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="MAX_SENSITIVITY">18</integer>
+    <integer name="MIN_SENSITIVITY">10</integer>
+    <!-- MAX_SENSITIVITY - MIN_SENSITIVITY -->
+    <integer name="SENSITIVITY_INTERVAL">8</integer>
+
+    <integer name="MAX_SAMPLES">100</integer>
+    <integer name="MIN_SAMPLES">1</integer>
+    <integer name="MAX_ACCELERATION">20</integer>
+    <integer name="MIN_ACCELERATION">1</integer>
+
+    <integer name="DEFAULT_SCREEN_OFF_PROGRESS">9</integer>
+    <integer name="DEFAULT_SENSITIVITY_PROGRESS">5</integer>
+</resources>

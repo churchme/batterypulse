@@ -31,7 +31,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:max="59"
-            android:progress="3"
+            android:progress="@integer/DEFAULT_SCREEN_OFF_PROGRESS"
             android:layout_weight="0.975" />
         <TextView
             android:id="@+id/textDelay"
@@ -57,8 +57,8 @@
             style="@style/Widget.AppCompat.SeekBar.Discrete"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:max="19"
-            android:progress="9"
+            android:max="@integer/SENSITIVITY_INTERVAL"
+            android:progress="3"
             android:layout_weight="0.975"/>
         <TextView
             android:id="@+id/textSensitivity"

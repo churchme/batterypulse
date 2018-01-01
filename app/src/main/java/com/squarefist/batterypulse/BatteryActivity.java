@@ -4,11 +4,13 @@ package com.squarefist.batterypulse;
  * Created by mchurch on 3/1/17.
  */
 
+import android.app.DialogFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.view.View;
 import android.app.Activity;
@@ -22,15 +24,15 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
-public class BatteryActivity extends Activity {
-    BatteryService mService;
-    boolean mBound = false;
+public class BatteryActivity extends Activity implements TestDialogFragment.NoticeDialogListener {
     Context context;
     String msg = "Android : ";
     public static final String PREFS_NAME = "BatteryPrefs";
+    public static boolean canRegister = true;
 
-    public static final int MAX_SENSE = 18;
-    public static final int MIN_SENSE = 10;
+    private static int MAX_SENSITIVITY;
+    private static int MIN_SENSITIVITY;
+    private static int SENSITIVITY_INTERVAL;
 
     private LinearLayout layout;
     private TextView txt_delay;
@@ -43,7 +45,9 @@ public class BatteryActivity extends Activity {
     private TestReceiver bReceiver;
     private GraphView graph_lift;
 
-    /** Called when the activity is first created. */
+    /**
+     * Called when the activity is first created.
+     */
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
@@ -52,6 +56,10 @@ public class BatteryActivity extends Activity {
         setContentView(R.layout.main);
         context = getApplicationContext();
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        Resources res = getResources();
+        MAX_SENSITIVITY = res.getInteger(R.integer.MAX_SENSITIVITY);
+        MIN_SENSITIVITY = res.getInteger(R.integer.MIN_SENSITIVITY);
+        SENSITIVITY_INTERVAL = res.getInteger(R.integer.SENSITIVITY_INTERVAL);
 
         // REGISTER RECEIVER THAT HANDLES SCREEN ON AND SCREEN OFF LOGIC
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
@@ -68,12 +76,14 @@ public class BatteryActivity extends Activity {
         radio_style = findViewById(R.id.radioGroupStyle);
         button_test = findViewById(R.id.buttonTestLift);
 
-        seekbar_delay.setProgress((settings.getInt("screen_off_delay", 9)));
-        seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity", 10));
-        txt_delay.setText(String.valueOf(seekbar_delay.getProgress()));
-        txt_sensitivity.setText(String.valueOf(seekbar_sensitivity.getProgress()));
+        seekbar_delay.setProgress((settings.getInt("screen_off_delay",
+                res.getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS))));
+        seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity",
+                res.getInteger(R.integer.DEFAULT_SENSITIVITY_PROGRESS)));
+        txt_delay.setText(String.valueOf(seekbar_delay.getProgress() + 1));
+        txt_sensitivity.setText(String.valueOf(scaleSensitivity(seekbar_sensitivity.getProgress() + 1)));
         toggle_service.setChecked(settings.getBoolean("is_enabled", false));
-        ((RadioButton)radio_style.getChildAt(settings.getInt("buzz_style", 0))).setChecked(true);
+        ((RadioButton) radio_style.getChildAt(settings.getInt("buzz_style", 0))).setChecked(true);
 
         graph_lift = new GraphView(this, seekbar_sensitivity.getProgress());
         graph_lift.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -85,10 +95,12 @@ public class BatteryActivity extends Activity {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 saveSettings();
             }
+
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
                 // Do nothing
             }
+
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 txt_delay.setText(String.valueOf(++progress));
@@ -100,10 +112,12 @@ public class BatteryActivity extends Activity {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 saveSettings();
             }
+
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
                 // Do nothing
             }
+
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 txt_sensitivity.setText(String.valueOf(scaleSensitivity(++progress)));
@@ -119,9 +133,8 @@ public class BatteryActivity extends Activity {
         });
     }
 
-    private int scaleSensitivity(int input) {
-        int scaled = (((MAX_SENSE - MIN_SENSE) * (input)) / (20)) + MIN_SENSE;
-        return scaled;
+    public static int scaleSensitivity(int input) {
+        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL + 1)) + MIN_SENSITIVITY;
     }
 
     @Override
@@ -134,9 +147,9 @@ public class BatteryActivity extends Activity {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
 
-        editor.putInt("screen_off_delay", seekbar_delay.getProgress());
-        Log.d(msg, "Screen off Delay: " + seekbar_delay.getProgress());
-        editor.putInt("accel_sensitivity", scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
+        editor.putInt("screen_off_delay", (seekbar_delay.getProgress()));
+        Log.d(msg, "Screen off Delay: " + (seekbar_delay.getProgress() + 1));
+        editor.putInt("accel_sensitivity", seekbar_sensitivity.getProgress());
         Log.d(msg, "Accel Sensitivity: " + scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
         editor.putBoolean("is_enabled", toggle_service.isChecked());
         Log.d(msg, "Is enabled: " + toggle_service.isChecked());
@@ -152,25 +165,39 @@ public class BatteryActivity extends Activity {
     }
 
     public void resetSettings(View view) {
-        seekbar_delay.setProgress(9);
-        seekbar_sensitivity.setProgress(9);
+        seekbar_delay.setProgress(getResources().getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS));
+        seekbar_sensitivity.setProgress(getResources().getInteger(R.integer.DEFAULT_SENSITIVITY_PROGRESS));
         toggle_service.setChecked(false);
-        ((RadioButton)radio_style.getChildAt(0)).setChecked(true);
+        ((RadioButton) radio_style.getChildAt(0)).setChecked(true);
 
         saveSettings();
     }
 
     public void testSettings(View view) {
-        graph_lift.resetPaths();
+        TestDialogFragment dialog = new TestDialogFragment();
+        dialog.show(getFragmentManager(), "test");
+    }
 
-        /* For getting the accel readings to the text view */
-        IntentFilter filter1 = new IntentFilter(TestReceiver.SENSOR_RESP);
-        filter1.addCategory(Intent.CATEGORY_DEFAULT);
-        bReceiver = new TestReceiver();
-        registerReceiver(bReceiver, filter1);
+    @Override
+    public void onDialogPositiveClick(DialogFragment dialog) {
+        if (canRegister) {
+            graph_lift.resetPaths();
+            graph_lift.updateSensPath(scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
 
-        bReceiver.setGraphView(graph_lift);
-        startService(new Intent(context, BatteryService.class));
+            /* For getting the accel readings to the graph view */
+            IntentFilter filter1 = new IntentFilter(TestReceiver.SENSOR_RESP);
+            filter1.addCategory(Intent.CATEGORY_DEFAULT);
+            bReceiver = new TestReceiver(getResources().getInteger(R.integer.MAX_SAMPLES));
+            registerReceiver(bReceiver, filter1);
+
+            bReceiver.setGraphView(graph_lift);
+            startService(new Intent(context, TestService.class));
+            canRegister = false;
+        }
+    }
+
+    @Override
+    public void onDialogNegativeClick(DialogFragment dialog) {
+        //Do nothing
     }
 }
-

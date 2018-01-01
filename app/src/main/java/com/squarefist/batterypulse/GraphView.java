@@ -18,6 +18,11 @@ public class GraphView extends View {
     private Path testPath;
     private Path sensPath;
 
+    private static int MAX_SAMPLES;
+    private static int MIN_SAMPLES;
+    private static int MAX_ACCELERATION;
+    private static int MIN_ACCELERATION;
+
     static class Pt {
         float x, y;
         Pt(float _x, float _y){
@@ -30,6 +35,11 @@ public class GraphView extends View {
 
     public GraphView(Context context, int sensitivityLine) {
         super(context);
+
+        MAX_SAMPLES = context.getResources().getInteger(R.integer.MAX_SAMPLES);
+        MIN_SAMPLES = context.getResources().getInteger(R.integer.MIN_SAMPLES);
+        MAX_ACCELERATION = context.getResources().getInteger(R.integer.MAX_ACCELERATION);
+        MIN_ACCELERATION = context.getResources().getInteger(R.integer.MIN_ACCELERATION);
 
         testPaint = new Paint();
         sensPaint = new Paint();
@@ -46,13 +56,11 @@ public class GraphView extends View {
     }
 
     private int scaleWidth(int sample, int width) {
-        int scaled = ((width) * (sample - TestReceiver.MIN_SAMPLES)) / (TestReceiver.MAX_SAMPLES - TestReceiver.MIN_SAMPLES);
-        return scaled;
+        return ((width) * (sample - MIN_SAMPLES)) / (MAX_SAMPLES - MIN_SAMPLES);
     }
 
-    private int scaleHeight(float reading, int height) {
-        float scaled = ((height) * (reading - TestReceiver.MIN_ACCEL)) / (TestReceiver.MAX_ACCEL - TestReceiver.MIN_ACCEL);
-        return (int)scaled;
+    private float scaleHeight(float reading, int height) {
+        return ((height) * (reading - MIN_ACCELERATION)) / (MAX_ACCELERATION - MIN_ACCELERATION);
     }
 
     public void resetPaths() {
