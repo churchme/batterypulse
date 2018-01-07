@@ -71,24 +71,22 @@ public class BatteryService extends Service implements SensorEventListener {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryPulse");
         mWakeLock.acquire();
 
         accelSensitvity = BatteryActivity.scaleSensitivity(settings.getInt("accel_sensitivity",
                 R.integer.DEFAULT_SENSITIVITY_PROGRESS)) + 1;
         pattern = settings.getInt("buzz_style", 0);
 
-        // Accelerometer checked very .2 seconds
+
         maxMove = (settings.getInt("screen_off_delay",
-                getResources().getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS)) + 1) * 60 * 5;
+                getResources().getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS)) + 1)
+                * 60 * (1000000 / getResources().getInteger(R.integer.SAMPLE_US));
         onTheMove = maxMove;
 
         sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorMan.registerListener(this, accelerometer, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
-
-        /*batteryHandler = new Handler();
-        batteryHandler.postDelayed(checkBatteryStatusRunnable, checkBatteryInterval);*/
+        sensorMan.registerListener(this, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
@@ -112,7 +110,6 @@ public class BatteryService extends Service implements SensorEventListener {
     @Override
     public void onDestroy() {
         sensorMan.unregisterListener(this, accelerometer);
-        //batteryHandler.removeCallbacks(checkBatteryStatusRunnable);
         mWakeLock.release();
         if (vibe_task != null)
             vibe_task.cancel(true);
@@ -124,40 +121,46 @@ public class BatteryService extends Service implements SensorEventListener {
         float[] mGravity;
         float mAccel = 0;
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            mGravity = event.values.clone();
-            // Shake detection
-            float x = mGravity[0];
-            float y = mGravity[1];
-            float z = mGravity[2];
+        mGravity = event.values.clone();
+        // Shake detection
+        float x = mGravity[0];
+        float y = mGravity[1];
+        float z = mGravity[2];
 
-            float zAbs = Math.abs(mGravity[2]);
+        float zAbs = Math.abs(mGravity[2]);
 
-            mAccelLast = mAccelCurrent;
-            mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
-            float delta = mAccelCurrent - mAccelLast;
-            mAccel = Math.abs(mAccel * 0.9f + delta);
+        mAccelLast = mAccelCurrent;
+        mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
+        float delta = mAccelCurrent - mAccelLast;
+        mAccel = Math.abs(mAccel * 0.9f + delta);
 
-            if (mAccel > 0.5) {
-                onTheMove = Math.min(++onTheMove, maxMove);
-            } else {
-                onTheMove = Math.max(--onTheMove, 0);
-            }
-            Log.d(msg, "onTheMove: " + onTheMove);
+        if (mAccel > 0.5) {
+            onTheMove = Math.min(++onTheMove, maxMove);
+        } else {
+            onTheMove = Math.max(--onTheMove, 0);
+        }
+        Log.d(msg, "onTheMove: " + onTheMove);
 
-            if (onTheMove < 10) {
-                intentMessage(TestReceiver.SENSOR_RESP, SENSOR_OUT_MSG, zAbs);
-                if (vibe_status.equals(AsyncTask.Status.FINISHED)) {
+        if (onTheMove < 10) {
+            vibe_status = vibe_task.getStatus();
+            switch (vibe_status) {
+                case FINISHED:
                     vibe_task = new VibeTask();
                     Log.d(msg, "Recreating task");
-                } else if (vibe_status.equals(AsyncTask.Status.RUNNING)) {
+                    break;
+                case PENDING:
+                    if (zAbs > accelSensitvity) {
+                        try {
+                            Log.d(msg, "DOING THE THING!");
+                            vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
+                        } catch (Exception IllegalStateException) {
+                            Log.d(msg, IllegalStateException.getMessage());
+                        }
+                    }
+                    break;
+                case RUNNING:
                     Log.d(msg, "Vibrator busy");
-                } else if (zAbs > accelSensitvity) {
-                    Log.d(msg, "DOING THE THING!");
-                    vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
-                } else {
-                    Log.d(msg, "Do nothing, threshold not met");
-                }
+                    break;
             }
         }
     }
@@ -174,24 +177,6 @@ public class BatteryService extends Service implements SensorEventListener {
 
         return ((float)level / (float)scale) * 100.0f;
     }
-
-    private void intentMessage(String receiverAction, String messageType, Object thing) {
-        Intent broadcastIntent = new Intent();
-        broadcastIntent.setAction(receiverAction);
-        broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-        broadcastIntent.putExtra(messageType, String.valueOf(thing));
-        sendBroadcast(broadcastIntent);
-    }
-
-    /*private Runnable checkBatteryStatusRunnable = new Runnable() {
-        @Override
-        public void run() {
-            //DO WHATEVER YOU WANT WITH LATEST BATTERY LEVEL STORED IN batteryLevel HERE...
-
-            // schedule next battery check
-            batteryHandler.postDelayed(checkBatteryStatusRunnable, checkBatteryInterval);
-        }
-    };*/
 
     private static class VibeTask extends AsyncTask<Integer, Object, Void> {
         protected Void doInBackground(Integer... inputs) {

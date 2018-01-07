@@ -22,6 +22,7 @@ public class TestService extends Service implements SensorEventListener {
     public static final String PREFS_NAME = "BatteryPrefs";
 
     private static VibeTask vibe_task;
+    private static AsyncTask.Status status;
 
     private SensorManager sensorMan;
     private Sensor accelerometer;
@@ -61,7 +62,7 @@ public class TestService extends Service implements SensorEventListener {
 
         sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorMan.registerListener(this, accelerometer, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
+        sensorMan.registerListener(this, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
@@ -79,36 +80,41 @@ public class TestService extends Service implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         float[] mGravity;
-        float mAccel = 0;
+        //float mAccel = 0;
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            mGravity = event.values.clone();
-            // Shake detection
-            float x = mGravity[0];
-            float y = mGravity[1];
-            float z = mGravity[2];
+        mGravity = event.values.clone();
+        // Shake detection
+        float x = mGravity[0];
+        float y = mGravity[1];
+        float z = mGravity[2];
 
-            float zAbs = Math.abs(mGravity[2]);
+        float zAbs = Math.abs(mGravity[2]);
 
-            mAccelLast = mAccelCurrent;
-            mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
-            float delta = mAccelCurrent - mAccelLast;
-            mAccel = Math.abs(mAccel * 0.9f + delta);
+        mAccelLast = mAccelCurrent;
+        mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
+        //float delta = mAccelCurrent - mAccelLast;
+        //mAccel = Math.abs(mAccel * 0.9f + delta);
 
-            intentMessage(TestReceiver.SENSOR_RESP, SENSOR_OUT_MSG, zAbs);
-            AsyncTask.Status status = vibe_task.getStatus();
-            if (status.equals(AsyncTask.Status.FINISHED)) {
+        intentMessage(TestReceiver.SENSOR_RESP, SENSOR_OUT_MSG, zAbs);
+        status = vibe_task.getStatus();
+        switch (status) {
+            case FINISHED:
                 vibe_task = new VibeTask();
                 Log.d(msg, "Recreating task");
-            } else if (status.equals(AsyncTask.Status.RUNNING)) {
+                break;
+            case PENDING:
+                if (zAbs > accelSensitvity) {
+                    try {
+                        Log.d(msg, "DOING THE THING!");
+                        vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
+                    } catch (Exception IllegalStateException) {
+                        Log.d(msg, "Somehow too fast");
+                    }
+                }
+                break;
+            case RUNNING:
                 Log.d(msg, "Vibrator busy");
-            } else if (zAbs > accelSensitvity) {
-                Log.d(msg, "DOING THE THING!");
-                Log.d(msg, "zAbs: " + zAbs + " Sens: " + accelSensitvity);
-                vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
-            } else {
-                Log.d(msg, "Do nothing, threshold not met");
-            }
+                break;
         }
     }
 
