@@ -34,15 +34,12 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
     private static int MIN_SENSITIVITY;
     private static int SENSITIVITY_INTERVAL;
 
-    private LinearLayout layout;
     private TextView txt_delay;
     private TextView txt_sensitivity;
     private ToggleButton toggle_service;
-    private Button button_test;
     private RadioGroup radio_style;
     private SeekBar seekbar_delay;
     private SeekBar seekbar_sensitivity;
-    private TestReceiver bReceiver;
     private GraphView graph_lift;
 
     /**
@@ -67,21 +64,20 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         BroadcastReceiver sReceiver = new ScreenReceiver();
         registerReceiver(sReceiver, filter);
 
-        layout = findViewById(R.id.linearLayout);
+        LinearLayout layout = findViewById(R.id.linearLayout);
         txt_delay = findViewById(R.id.textDelay);
         txt_sensitivity = findViewById(R.id.textSensitivity);
         seekbar_delay = findViewById(R.id.seekbarDelay);
         seekbar_sensitivity = findViewById(R.id.seekbarSensitivity);
         toggle_service = findViewById(R.id.toggleService);
         radio_style = findViewById(R.id.radioGroupStyle);
-        button_test = findViewById(R.id.buttonTestLift);
 
         seekbar_delay.setProgress((settings.getInt("screen_off_delay",
                 res.getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS))));
         seekbar_sensitivity.setProgress(settings.getInt("accel_sensitivity",
                 res.getInteger(R.integer.DEFAULT_SENSITIVITY_PROGRESS)));
         txt_delay.setText(String.valueOf(seekbar_delay.getProgress() + 1));
-        txt_sensitivity.setText(String.valueOf(scaleSensitivity(seekbar_sensitivity.getProgress() + 1)));
+        txt_sensitivity.setText(String.valueOf(seekbar_sensitivity.getProgress() + 1));
         toggle_service.setChecked(settings.getBoolean("is_enabled", false));
         ((RadioButton) radio_style.getChildAt(settings.getInt("buzz_style", 0))).setChecked(true);
 
@@ -93,6 +89,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         seekbar_delay.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                toggle_service.setChecked(true);
                 saveSettings();
             }
 
@@ -110,6 +107,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         seekbar_sensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                toggle_service.setChecked(true);
                 saveSettings();
             }
 
@@ -120,8 +118,8 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
 
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                txt_sensitivity.setText(String.valueOf(scaleSensitivity(++progress)));
-                graph_lift.updateSensPath(scaleSensitivity(progress));
+                graph_lift.updateSensPath(scaleSensitivity(SENSITIVITY_INTERVAL - progress));
+                txt_sensitivity.setText(String.valueOf((++progress)));
             }
         });
 
@@ -134,7 +132,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
     }
 
     public static int scaleSensitivity(int input) {
-        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL + 1)) + MIN_SENSITIVITY;
+        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
     }
 
     @Override
@@ -150,7 +148,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         editor.putInt("screen_off_delay", (seekbar_delay.getProgress()));
         Log.d(msg, "Screen off Delay: " + (seekbar_delay.getProgress() + 1));
         editor.putInt("accel_sensitivity", seekbar_sensitivity.getProgress());
-        Log.d(msg, "Accel Sensitivity: " + scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
+        Log.d(msg, "Accel Sensitivity: " + scaleSensitivity(SENSITIVITY_INTERVAL - seekbar_sensitivity.getProgress()));
         editor.putBoolean("is_enabled", toggle_service.isChecked());
         Log.d(msg, "Is enabled: " + toggle_service.isChecked());
         editor.putInt("buzz_style", radio_style.indexOfChild(findViewById(radio_style.getCheckedRadioButtonId())));
@@ -182,12 +180,12 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
     public void onDialogPositiveClick(DialogFragment dialog) {
         if (canRegister) {
             graph_lift.resetPaths();
-            graph_lift.updateSensPath(scaleSensitivity(seekbar_sensitivity.getProgress() + 1));
+            graph_lift.updateSensPath(scaleSensitivity(SENSITIVITY_INTERVAL - seekbar_sensitivity.getProgress()));
 
             /* For getting the accel readings to the graph view */
             IntentFilter filter1 = new IntentFilter(TestReceiver.SENSOR_RESP);
             filter1.addCategory(Intent.CATEGORY_DEFAULT);
-            bReceiver = new TestReceiver(getResources().getInteger(R.integer.MAX_SAMPLES));
+            TestReceiver bReceiver = new TestReceiver(getResources().getInteger(R.integer.MAX_SAMPLES));
             registerReceiver(bReceiver, filter1);
 
             bReceiver.setGraphView(graph_lift);

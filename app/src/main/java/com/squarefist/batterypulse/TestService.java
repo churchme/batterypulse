@@ -30,7 +30,6 @@ public class TestService extends Service implements SensorEventListener {
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
 
-    private float mAccelLast;
     private float mAccelCurrent;
     private int accelSensitvity;
     private int pattern;
@@ -56,8 +55,9 @@ public class TestService extends Service implements SensorEventListener {
         vibe_task = new VibeTask();
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
-        accelSensitvity = BatteryActivity.scaleSensitivity(settings.getInt("accel_sensitivity",
-                R.integer.DEFAULT_SENSITIVITY_PROGRESS)) + 1;
+        accelSensitvity = BatteryActivity.scaleSensitivity(
+                getResources().getInteger(R.integer.SENSITIVITY_INTERVAL)
+                        - settings.getInt("accel_sensitivity", R.integer.DEFAULT_SENSITIVITY_PROGRESS));
         pattern = settings.getInt("buzz_style", 0);
 
         sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -90,7 +90,7 @@ public class TestService extends Service implements SensorEventListener {
 
         float zAbs = Math.abs(mGravity[2]);
 
-        mAccelLast = mAccelCurrent;
+        float mAccelLast = mAccelCurrent;
         mAccelCurrent = (float)Math.sqrt(x * x + y * y + z * z);
         //float delta = mAccelCurrent - mAccelLast;
         //mAccel = Math.abs(mAccel * 0.9f + delta);
