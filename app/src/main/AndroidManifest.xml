@@ -37,10 +37,10 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".TestService"
+        <receiver
+            android:name=".BatteryService$StopServiceReceiver"
             android:enabled="true"
-            android:exported="true"></service>
+            android:process=":remote" />
     </application>
 
 </manifest>

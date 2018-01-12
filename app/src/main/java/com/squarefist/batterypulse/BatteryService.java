@@ -4,11 +4,9 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.hardware.Sensor;
@@ -18,11 +16,9 @@ import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.Vibrator;
-import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 public class BatteryService extends Service implements SensorEventListener {
@@ -48,7 +44,7 @@ public class BatteryService extends Service implements SensorEventListener {
     private int pattern;
     private static int onTheMove;
     private static int maxMove;
-    private PowerManager.WakeLock mWakeLock;
+    private static PowerManager.WakeLock mWakeLock;
 
     /**
      * Class used for the client Binder.  Because we know this service always
@@ -69,15 +65,27 @@ public class BatteryService extends Service implements SensorEventListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         mService = this;
+        int goCode = 0;
+        goCode = intent.getIntExtra("GoCode", goCode);
+        if (goCode == getResources().getInteger(R.integer.STOP_INTENT)) {
+            shutDown();
+            stopSelf();
+            return START_NOT_STICKY;
+        } else {
+            return setUp();
+        }
+    }
+
+    private int setUp() {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         Resources res = getResources();
         MAX_SENSITIVITY = res.getInteger(R.integer.MAX_SENSITIVITY);
         MIN_SENSITIVITY = res.getInteger(R.integer.MIN_SENSITIVITY);
         SENSITIVITY_INTERVAL = res.getInteger(R.integer.SENSITIVITY_INTERVAL);
 
-        //PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        //mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryPulse");
-        //mWakeLock.acquire();
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryPulse");
+        mWakeLock.acquire();
 
         sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -97,22 +105,31 @@ public class BatteryService extends Service implements SensorEventListener {
         maxMove = (settings.getInt("screen_off_delay",
                 getResources().getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS)) + 1)
                 * 60 * (1000000 / getResources().getInteger(R.integer.SAMPLE_US));
+        //maxMove = 20;
         onTheMove = maxMove;
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-        /*Intent notificationIntent = new Intent(this, BatteryActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-        Notification notification = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.ic_info_black_24dp)
-                .setContentTitle("Battery Pulse")
-                .setContentText("Catching a lift...")
-                .setContentIntent(pendingIntent).build();
-
-        startForeground(1337, notification);*/
+        startForeground(1337, getNotification());
 
         return START_STICKY;
+    }
+
+    private Notification getNotification() {
+        //Intent notificationIntent = new Intent(mService, BatteryActivity.class);
+        //PendingIntent pendingIntent = PendingIntent.getService(mService, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Intent i = new Intent(mService, BatteryService.class);
+        i.putExtra("GoCode", getResources().getInteger(R.integer.STOP_INTENT));
+        PendingIntent resultPendingIntent = PendingIntent.getService(mService, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification notification = new Notification.Builder(mService)
+                .setSmallIcon(R.mipmap.bp_launcher)
+                .setContentTitle("Battery Pulse")
+                .addAction(0, "Disable", resultPendingIntent)
+                .build();
+
+        return notification;
     }
 
     private int scaleSensitivity(int input) {
@@ -121,12 +138,21 @@ public class BatteryService extends Service implements SensorEventListener {
         return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
     }
 
-    @Override
-    public void onDestroy() {
-        //mWakeLock.release();
-        unregisterReceiver(sReceiver);
+    private void shutDown() {
+        if (mWakeLock.isHeld())
+            mWakeLock.release();
+        try {
+            unregisterReceiver(sReceiver);
+        } catch (Exception RuntimeException) {
+            Log.d(msg, "Shit");
+        }
         if (vibe_task != null)
             vibe_task.cancel(true);
+    }
+
+    @Override
+    public void onDestroy() {
+        shutDown();
         super.onDestroy();
     }
 

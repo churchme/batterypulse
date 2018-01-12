@@ -16,4 +16,8 @@
 
     <!-- SAMPLE EVERY x MICROSECONDS -->
     <integer name="SAMPLE_US">200000</integer>
+
+    <!-- GO CODES -->
+    <integer name="STRT_INTENT">2535235</integer>
+    <integer name="STOP_INTENT">1926098</integer>
 </resources>

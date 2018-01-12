@@ -128,7 +128,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
 
     public static int scaleSensitivity(int input) {
         Log.d("Android---", "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
-        Log.d("Android---", "min: " + MIN_SENSITIVITY + "input: " + input);
+        Log.d("Android---", "min: " + MIN_SENSITIVITY + " input: " + input);
         return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
     }
 
@@ -156,10 +156,15 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
 
         // Start or stop the service
         if (settings.getBoolean("is_enabled", false)) {
-            context.stopService(new Intent(this, BatteryService.class));
-            context.startService(new Intent(this, BatteryService.class));
+            Intent intent = new Intent(this, BatteryService.class);
+            intent.putExtra("GoCode", getResources().getInteger(R.integer.STRT_INTENT));
+            context.startService(intent);
+            //context.stopService(new Intent(this, BatteryService.class));
+            //context.startService(new Intent(this, BatteryService.class));
         } else {
-            context.stopService(new Intent(this, BatteryService.class));
+            Intent intent = new Intent(this, BatteryService.class);
+            intent.putExtra("GoCode", getResources().getInteger(R.integer.STOP_INTENT));
+            context.stopService(intent);
         }
     }
 
