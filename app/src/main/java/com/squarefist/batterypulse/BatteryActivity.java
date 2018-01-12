@@ -58,12 +58,6 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         MIN_SENSITIVITY = res.getInteger(R.integer.MIN_SENSITIVITY);
         SENSITIVITY_INTERVAL = res.getInteger(R.integer.SENSITIVITY_INTERVAL);
 
-        // REGISTER RECEIVER THAT HANDLES SCREEN ON AND SCREEN OFF LOGIC
-        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        BroadcastReceiver sReceiver = new ScreenReceiver();
-        registerReceiver(sReceiver, filter);
-
         LinearLayout layout = findViewById(R.id.linearLayout);
         txt_delay = findViewById(R.id.textDelay);
         txt_sensitivity = findViewById(R.id.textSensitivity);
@@ -126,12 +120,15 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         radio_style.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+                toggle_service.setChecked(true);
                 saveSettings();
             }
         });
     }
 
     public static int scaleSensitivity(int input) {
+        Log.d("Android---", "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
+        Log.d("Android---", "min: " + MIN_SENSITIVITY + "input: " + input);
         return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
     }
 
@@ -156,6 +153,14 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
 
         // Apply the edits!
         editor.apply();
+
+        // Start or stop the service
+        if (settings.getBoolean("is_enabled", false)) {
+            context.stopService(new Intent(this, BatteryService.class));
+            context.startService(new Intent(this, BatteryService.class));
+        } else {
+            context.stopService(new Intent(this, BatteryService.class));
+        }
     }
 
     public void enableService(View view) {

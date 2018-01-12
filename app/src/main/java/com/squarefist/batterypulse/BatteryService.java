@@ -3,10 +3,14 @@ package com.squarefist.batterypulse;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -22,25 +26,24 @@ import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 public class BatteryService extends Service implements SensorEventListener {
-    public static String STATUS_OUT_MSG = "stat_msg";
-    public static String SENSOR_OUT_MSG = "sens_msg";
-    public static String OTHER_OUT_MSG = "other_msg";
     String msg = "Battery Service : ";
     public static final String PREFS_NAME = "BatteryPrefs";
 
     private static VibeTask vibe_task;
     private static AsyncTask.Status vibe_status;
 
+    private BatteryReceiver sReceiver;
+    private BatteryService mService;
     private SensorManager sensorMan;
     private Sensor accelerometer;
     private static Vibrator vibe;
-    private float currentBatteryLevel;
-    private Handler batteryHandler;
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
 
+    private int MAX_SENSITIVITY;
+    private int MIN_SENSITIVITY;
+    private int SENSITIVITY_INTERVAL;
     private float mAccelCurrent;
-    private int checkBatteryInterval;
     private int accelSensitvity;
     private int pattern;
     private static int onTheMove;
@@ -65,15 +68,27 @@ public class BatteryService extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        vibe_task = new VibeTask();
-        vibe_status = vibe_task.getStatus();
+        mService = this;
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        Resources res = getResources();
+        MAX_SENSITIVITY = res.getInteger(R.integer.MAX_SENSITIVITY);
+        MIN_SENSITIVITY = res.getInteger(R.integer.MIN_SENSITIVITY);
+        SENSITIVITY_INTERVAL = res.getInteger(R.integer.SENSITIVITY_INTERVAL);
 
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryPulse");
-        mWakeLock.acquire();
+        //PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        //mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BatteryPulse");
+        //mWakeLock.acquire();
 
-        accelSensitvity = BatteryActivity.scaleSensitivity(
+        sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
+        accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        // REGISTER RECEIVER THAT HANDLES SCREEN ON AND SCREEN OFF LOGIC
+        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        sReceiver = new BatteryReceiver();
+        registerReceiver(sReceiver, filter);
+
+        accelSensitvity = scaleSensitivity(
                 getResources().getInteger(R.integer.SENSITIVITY_INTERVAL)
                         - settings.getInt("accel_sensitivity", R.integer.DEFAULT_SENSITIVITY_PROGRESS));
         pattern = settings.getInt("buzz_style", 0);
@@ -84,17 +99,10 @@ public class BatteryService extends Service implements SensorEventListener {
                 * 60 * (1000000 / getResources().getInteger(R.integer.SAMPLE_US));
         onTheMove = maxMove;
 
-        sensorMan = (SensorManager) getSystemService(SENSOR_SERVICE);
-        accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorMan.registerListener(this, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
-
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-
-        Intent notificationIntent = new Intent(this, BatteryActivity.class);
-
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
-                notificationIntent, 0);
+        /*Intent notificationIntent = new Intent(this, BatteryActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
         Notification notification = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_info_black_24dp)
@@ -102,15 +110,21 @@ public class BatteryService extends Service implements SensorEventListener {
                 .setContentText("Catching a lift...")
                 .setContentIntent(pendingIntent).build();
 
-        startForeground(1337, notification);
+        startForeground(1337, notification);*/
 
         return START_STICKY;
     }
 
+    private int scaleSensitivity(int input) {
+        Log.d(msg, "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
+        Log.d(msg, "min: " + MIN_SENSITIVITY + "input: " + input);
+        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
+    }
+
     @Override
     public void onDestroy() {
-        sensorMan.unregisterListener(this, accelerometer);
-        mWakeLock.release();
+        //mWakeLock.release();
+        unregisterReceiver(sReceiver);
         if (vibe_task != null)
             vibe_task.cancel(true);
         super.onDestroy();
@@ -151,7 +165,7 @@ public class BatteryService extends Service implements SensorEventListener {
                 case PENDING:
                     if (zAbs > accelSensitvity) {
                         try {
-                            Log.d(msg, "DOING THE THING!");
+                            Log.d(msg, "DOING THE THING! Acc: " + accelSensitvity + " aAbs: " + zAbs);
                             vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
                         } catch (Exception IllegalStateException) {
                             Log.d(msg, IllegalStateException.getMessage());
@@ -161,6 +175,24 @@ public class BatteryService extends Service implements SensorEventListener {
                 case RUNNING:
                     Log.d(msg, "Vibrator busy");
                     break;
+            }
+        }
+    }
+
+    public class BatteryReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(final Context context, Intent intent) {
+            if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+                Log.d(msg, "Start listening for lift...");
+                onTheMove = maxMove;
+                vibe_task = new VibeTask();
+                vibe_status = vibe_task.getStatus();
+                sensorMan.registerListener(mService, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
+            } else {
+                Log.d(msg, "Stop listening for lift...");
+                sensorMan.unregisterListener(mService, accelerometer);
+                if (vibe_task != null)
+                    vibe_task.cancel(true);
             }
         }
     }

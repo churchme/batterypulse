@@ -30,15 +30,12 @@
         <receiver
             android:name=".TestReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.ACCELEROMETER">
             <intent-filter>
                 <action android:name="com.squarefist.batterybuzzer.action.SENSOR_PROCESSED" />
             </intent-filter>
         </receiver>
-        <receiver
-            android:name=".ScreenReceiver"
-            android:enabled="true"
-            android:exported="true"></receiver>
 
         <service
             android:name=".TestService"
