@@ -68,9 +68,9 @@ public class BatteryService extends Service implements SensorEventListener {
         int goCode = 0;
         goCode = intent.getIntExtra("GoCode", goCode);
         if (goCode == getResources().getInteger(R.integer.STOP_INTENT)) {
-            shutDown();
+            tearDown();
             stopSelf();
-            return START_NOT_STICKY;
+            return START_REDELIVER_INTENT;
         } else {
             return setUp();
         }
@@ -97,14 +97,14 @@ public class BatteryService extends Service implements SensorEventListener {
         registerReceiver(sReceiver, filter);
 
         accelSensitvity = scaleSensitivity(
-                getResources().getInteger(R.integer.SENSITIVITY_INTERVAL)
+                res.getInteger(R.integer.SENSITIVITY_INTERVAL)
                         - settings.getInt("accel_sensitivity", R.integer.DEFAULT_SENSITIVITY_PROGRESS));
         pattern = settings.getInt("buzz_style", 0);
 
 
         maxMove = (settings.getInt("screen_off_delay",
-                getResources().getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS)) + 1)
-                * 60 * (1000000 / getResources().getInteger(R.integer.SAMPLE_US));
+                res.getInteger(R.integer.DEFAULT_SCREEN_OFF_PROGRESS)) + 1)
+                * 60 * (1000000 / res.getInteger(R.integer.SAMPLE_US));
         //maxMove = 20;
         onTheMove = maxMove;
 
@@ -115,31 +115,12 @@ public class BatteryService extends Service implements SensorEventListener {
         return START_STICKY;
     }
 
-    private Notification getNotification() {
-        //Intent notificationIntent = new Intent(mService, BatteryActivity.class);
-        //PendingIntent pendingIntent = PendingIntent.getService(mService, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Intent i = new Intent(mService, BatteryService.class);
-        i.putExtra("GoCode", getResources().getInteger(R.integer.STOP_INTENT));
-        PendingIntent resultPendingIntent = PendingIntent.getService(mService, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Notification notification = new Notification.Builder(mService)
-                .setSmallIcon(R.mipmap.bp_launcher)
-                .setContentTitle("Battery Pulse")
-                .addAction(0, "Disable", resultPendingIntent)
-                .build();
-
-        return notification;
-    }
-
-    private int scaleSensitivity(int input) {
-        Log.d(msg, "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
-        Log.d(msg, "min: " + MIN_SENSITIVITY + "input: " + input);
-        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
-    }
-
-    private void shutDown() {
-        if (mWakeLock.isHeld())
+    private void tearDown() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putBoolean("is_enabled", false);
+        editor.apply();
+        if (mWakeLock != null && mWakeLock.isHeld())
             mWakeLock.release();
         try {
             unregisterReceiver(sReceiver);
@@ -150,9 +131,31 @@ public class BatteryService extends Service implements SensorEventListener {
             vibe_task.cancel(true);
     }
 
+    private Notification getNotification() {
+        Intent notificationIntent = new Intent(getApplication(), BatteryActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+        Intent i = new Intent(mService, BatteryService.class);
+        i.putExtra("GoCode", getResources().getInteger(R.integer.STOP_INTENT));
+        PendingIntent resultPendingIntent = PendingIntent.getService(mService, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        return new Notification.Builder(mService)
+                .setSmallIcon(R.mipmap.bp_launcher)
+                .setContentTitle("Battery Pulse")
+                .setContentIntent(pendingIntent)
+                .addAction(0, "Disable", resultPendingIntent)
+                .build();
+    }
+
+    private int scaleSensitivity(int input) {
+        Log.d(msg, "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
+        Log.d(msg, "min: " + MIN_SENSITIVITY + " input: " + input);
+        return (((MAX_SENSITIVITY - MIN_SENSITIVITY) * (input)) / (SENSITIVITY_INTERVAL)) + MIN_SENSITIVITY;
+    }
+
     @Override
     public void onDestroy() {
-        shutDown();
+        tearDown();
         super.onDestroy();
     }
 
@@ -181,7 +184,7 @@ public class BatteryService extends Service implements SensorEventListener {
         }
         Log.d(msg, "onTheMove: " + onTheMove);
 
-        if (onTheMove < 10) {
+        if (onTheMove < 20) {
             vibe_status = vibe_task.getStatus();
             switch (vibe_status) {
                 case FINISHED:
@@ -193,6 +196,7 @@ public class BatteryService extends Service implements SensorEventListener {
                         try {
                             Log.d(msg, "DOING THE THING! Acc: " + accelSensitvity + " aAbs: " + zAbs);
                             vibe_task.execute(pattern, (int)Math.ceil(getBatteryLevel()));
+                            onTheMove = maxMove;
                         } catch (Exception IllegalStateException) {
                             Log.d(msg, IllegalStateException.getMessage());
                         }
@@ -212,7 +216,6 @@ public class BatteryService extends Service implements SensorEventListener {
                 Log.d(msg, "Start listening for lift...");
                 onTheMove = maxMove;
                 vibe_task = new VibeTask();
-                vibe_status = vibe_task.getStatus();
                 sensorMan.registerListener(mService, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
             } else {
                 Log.d(msg, "Stop listening for lift...");
@@ -251,7 +254,6 @@ public class BatteryService extends Service implements SensorEventListener {
             } else {
                 vibe.vibrate(10 * (long) currentBatteryLevel);
             }
-            onTheMove = maxMove;
             return null;
         }
 

@@ -65,6 +65,7 @@ public class TestService extends Service implements SensorEventListener {
         sensorMan.registerListener(this, accelerometer, getResources().getInteger(R.integer.SAMPLE_US));
 
         vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        Log.d(msg, "Here");
 
         return START_STICKY;
     }

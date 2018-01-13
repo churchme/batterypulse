@@ -5,7 +5,6 @@ package com.squarefist.batterypulse;
  */
 
 import android.app.DialogFragment;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -16,7 +15,6 @@ import android.view.View;
 import android.app.Activity;
 import android.util.Log;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -126,6 +124,13 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         });
     }
 
+    @Override
+    public void onResume() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        toggle_service.setChecked(settings.getBoolean("is_enabled", false));
+        super.onResume();
+    }
+
     public static int scaleSensitivity(int input) {
         Log.d("Android---", "int: " + SENSITIVITY_INTERVAL + " MAX: " + MAX_SENSITIVITY);
         Log.d("Android---", "min: " + MIN_SENSITIVITY + " input: " + input);
@@ -134,8 +139,8 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
 
     @Override
     public void onStop() {
-        super.onStop();
         saveSettings();
+        super.onStop();
     }
 
     private void saveSettings() {
@@ -164,7 +169,7 @@ public class BatteryActivity extends Activity implements TestDialogFragment.Noti
         } else {
             Intent intent = new Intent(this, BatteryService.class);
             intent.putExtra("GoCode", getResources().getInteger(R.integer.STOP_INTENT));
-            context.stopService(intent);
+            context.startService(intent);
         }
     }
 

@@ -25,7 +25,8 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".BatteryService" />
+        <service android:name=".BatteryService"/>
+        <service android:name=".TestService"/>
 
         <receiver
             android:name=".TestReceiver"
@@ -36,11 +37,6 @@
                 <action android:name="com.squarefist.batterybuzzer.action.SENSOR_PROCESSED" />
             </intent-filter>
         </receiver>
-
-        <receiver
-            android:name=".BatteryService$StopServiceReceiver"
-            android:enabled="true"
-            android:process=":remote" />
     </application>
 
 </manifest>
